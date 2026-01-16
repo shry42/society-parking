@@ -250,18 +250,39 @@ export default function AdminDashboardPage() {
               Run the live, animated draw on a big screen. Each flat appears
               once in random order with its result.
             </p>
-            <Link
-              href="/admin/lottery"
-              className="btn-primary mt-3 flex w-full items-center justify-center gap-2 text-sm px-6 py-3"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Open Live Lottery Screen
-            </Link>
+            <div className="mt-3 flex flex-col gap-2">
+              <Link
+                href="/admin/lottery"
+                className="btn-primary flex w-full items-center justify-center gap-2 text-sm px-6 py-3"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Open Live Lottery Screen
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  const popup = window.open(
+                    "/admin/lottery",
+                    "lotteryScreen",
+                    "width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=no"
+                  );
+                  if (popup) {
+                    popup.focus();
+                  }
+                }}
+                className="btn-secondary flex w-full items-center justify-center gap-2 text-sm px-6 py-3"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Open in Popup Window
+              </button>
+            </div>
             <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-              Includes pause / resume controls and ensures no repetition or
+              Use popup window for separate display screen. Includes pause / resume controls and ensures no repetition or
               skipping of flats.
             </p>
           </div>
