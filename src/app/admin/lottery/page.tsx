@@ -32,6 +32,41 @@ const demoFlats: DrawItem[] = [
     id: "3",
     flatNumber: "C-501",
     displayName: "Mehta Family"
+  },
+  {
+    id: "4",
+    flatNumber: "A-105",
+    displayName: "Kumar Family"
+  },
+  {
+    id: "5",
+    flatNumber: "D-307",
+    displayName: "Singh Family"
+  },
+  {
+    id: "6",
+    flatNumber: "B-412",
+    displayName: "Gupta Family"
+  },
+  {
+    id: "7",
+    flatNumber: "E-208",
+    displayName: "Sharma Family"
+  },
+  {
+    id: "8",
+    flatNumber: "C-603",
+    displayName: "Joshi Family"
+  },
+  {
+    id: "9",
+    flatNumber: "A-401",
+    displayName: "Desai Family"
+  },
+  {
+    id: "10",
+    flatNumber: "F-205",
+    displayName: "Reddy Family"
   }
 ];
 
@@ -52,24 +87,34 @@ export default function AdminLotteryPage() {
     const timer = setTimeout(() => {
       const current = items[currentIndex];
       const isFixed = current.isFixed;
-      const remainingSlots = 205 - history.filter((h) => h.result === "ALLOTTED").length;
+      const allottedCount = history.filter((h) => h.result === "ALLOTTED").length;
+      const remainingSlots = 205 - allottedCount;
       let result: DrawItem;
 
-      if (isFixed) {
-        result = { ...current, result: "ALLOTTED" };
+      if (isFixed && current.slotNumber) {
+        // Fixed slot - use the pre-assigned slot
+        result = { ...current, result: "ALLOTTED", slotNumber: current.slotNumber };
       } else if (remainingSlots > 0) {
-        result = {
-          ...current,
-          result: Math.random() > 0.4 ? "ALLOTTED" : "NOT_ALLOTTED",
-          slotNumber: `P-${String(remainingSlots).padStart(3, "0")}`
-        };
+        // Random allocation for normal flats (70% chance for demo)
+        const willAllot = Math.random() > 0.3;
+        if (willAllot) {
+          const nextSlotNumber = allottedCount + 1;
+          result = {
+            ...current,
+            result: "ALLOTTED",
+            slotNumber: `P-${String(nextSlotNumber).padStart(3, "0")}`
+          };
+        } else {
+          result = { ...current, result: "NOT_ALLOTTED" };
+        }
       } else {
+        // No slots remaining
         result = { ...current, result: "NOT_ALLOTTED" };
       }
 
       setHistory((prev) => [...prev, result]);
       setCurrentIndex((prev) => prev + 1);
-    }, 1600);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [status, currentIndex, items, history]);
@@ -78,7 +123,7 @@ export default function AdminLotteryPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:hidden">
         <div className="mb-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <Link href="/admin/dashboard" className="hover:text-slate-700 dark:hover:text-slate-300">
             Dashboard
@@ -97,44 +142,44 @@ export default function AdminLotteryPage() {
         </div>
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-[1.4fr,1fr]">
-        <div className="card flex flex-col items-center justify-center gap-4 p-6 text-center sm:p-8 lg:p-10">
-          <p className="badge mb-2 text-xs font-semibold uppercase tracking-[0.26em] text-primary-600 dark:text-primary-200">
+      <section className="grid gap-4 lg:grid-cols-[1fr,350px] xl:grid-cols-[1fr,400px]">
+        <div className="card flex min-h-[70vh] flex-col items-center justify-center gap-6 p-8 text-center sm:min-h-[75vh] sm:gap-8 sm:p-12 lg:min-h-[80vh] lg:p-16 xl:gap-12 xl:p-20">
+          <p className="badge mb-4 text-sm font-semibold uppercase tracking-[0.26em] text-primary-600 dark:text-primary-200 sm:text-base lg:text-lg">
             Society Parking Lottery
           </p>
 
           {current ? (
             <>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              <p className="text-lg font-medium text-slate-600 dark:text-slate-300 sm:text-xl lg:text-2xl xl:text-3xl">
                 Flat appearing in draw
               </p>
-              <p className="text-4xl font-extrabold tracking-[0.18em] text-primary-600 dark:text-primary-200 sm:text-5xl lg:text-6xl">
+              <p className="text-6xl font-extrabold tracking-[0.18em] text-primary-600 dark:text-primary-200 sm:text-7xl lg:text-8xl xl:text-9xl">
                 {current.flatNumber}
               </p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              <p className="mt-2 text-lg text-slate-600 dark:text-slate-300 sm:text-xl lg:text-2xl xl:text-3xl">
                 {current.displayName}
               </p>
 
-              <div className="mt-5 flex flex-col items-center gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+              <div className="mt-8 flex flex-col items-center gap-4 sm:mt-10 lg:mt-12 xl:mt-16">
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 sm:text-base lg:text-lg xl:text-xl">
                   Result
                 </p>
                 {current.result === "ALLOTTED" ? (
                   <>
-                    <p className="rounded-full bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 ring-2 ring-emerald-500/60 dark:text-emerald-300 sm:px-6 sm:text-sm">
+                    <p className="rounded-full bg-emerald-500/10 px-8 py-4 text-base font-semibold uppercase tracking-[0.24em] text-emerald-600 ring-4 ring-emerald-500/60 dark:text-emerald-300 sm:px-10 sm:py-5 sm:text-lg lg:px-12 lg:py-6 lg:text-xl xl:px-16 xl:py-8 xl:text-2xl">
                       Parking Allotted
                     </p>
                     {current.slotNumber && (
-                      <p className="text-sm text-emerald-700 dark:text-emerald-200">
+                      <p className="text-lg text-emerald-700 dark:text-emerald-200 sm:text-xl lg:text-2xl xl:text-3xl">
                         Slot number:{" "}
-                        <span className="font-semibold">
+                        <span className="font-bold text-2xl sm:text-3xl lg:text-4xl xl:text-5xl">
                           {current.slotNumber}
                         </span>
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="rounded-full bg-rose-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-rose-600 ring-2 ring-rose-500/60 dark:text-rose-200 sm:px-6 sm:text-sm">
+                  <p className="rounded-full bg-rose-500/10 px-8 py-4 text-base font-semibold uppercase tracking-[0.24em] text-rose-600 ring-4 ring-rose-500/60 dark:text-rose-200 sm:px-10 sm:py-5 sm:text-lg lg:px-12 lg:py-6 lg:text-xl xl:px-16 xl:py-8 xl:text-2xl">
                     Not Allotted
                   </p>
                 )}
@@ -142,10 +187,10 @@ export default function AdminLotteryPage() {
             </>
           ) : (
             <>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              <p className="text-xl font-medium text-slate-600 dark:text-slate-300 sm:text-2xl lg:text-3xl">
                 Lottery not started yet
               </p>
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-4 text-base text-slate-500 dark:text-slate-400 sm:text-lg lg:text-xl">
                 When you start, the system will automatically cycle through all
                 flats exactly once in random order.
               </p>
@@ -153,10 +198,10 @@ export default function AdminLotteryPage() {
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <div className="card p-3 sm:p-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              Controls (Demo)
+              Controls
             </h2>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
               In the real system, once you start and complete the lottery, it
