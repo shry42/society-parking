@@ -17,12 +17,24 @@ export default function HomePage() {
             fairly distributes limited car parking slots. Results are locked
             forever after the draw – no edits, no confusion.
           </p>
-          <div className="mt-4 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:items-center sm:gap-4">
-            <Link href="/tenant" className="btn-primary w-full justify-center sm:w-auto">
+          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:gap-4">
+            <Link href="/tenant" className="group btn-primary flex items-center justify-center gap-2 w-full sm:w-auto text-base px-6 py-3">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
               I&apos;m a Tenant
+              <svg className="h-4 w-4 transition group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </Link>
-            <Link href="/admin" className="btn-secondary w-full justify-center sm:w-auto">
+            <Link href="/admin" className="group btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto text-base px-6 py-3">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
               I&apos;m the Society / Admin
+              <svg className="h-4 w-4 transition group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </Link>
           </div>
           <div className="mt-4 grid gap-3 text-xs sm:mt-6 sm:grid-cols-3">

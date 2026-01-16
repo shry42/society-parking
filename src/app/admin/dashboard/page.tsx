@@ -88,22 +88,23 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3">
+        <div className="mb-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <Link href="/admin" className="hover:text-slate-700 dark:hover:text-slate-300">
+            Admin Portal
+          </Link>
+          <span>/</span>
+          <span className="text-slate-700 dark:text-slate-300">Dashboard</span>
+        </div>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
             Admin Dashboard
           </h1>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Review applications, configure fixed parking, and control the live
             lottery draw.
           </p>
         </div>
-        <Link
-          href="/admin"
-          className="text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          ← Admin portal
-        </Link>
       </div>
 
       <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
@@ -155,9 +156,12 @@ export default function AdminDashboardPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="btn-secondary px-3 py-1.5 text-[11px]"
+                className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
                 onClick={() => downloadCsv(mockApplications)}
               >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Download CSV
               </button>
               <span className="badge text-[10px] sm:text-xs">
@@ -248,9 +252,13 @@ export default function AdminDashboardPage() {
             </p>
             <Link
               href="/admin/lottery"
-              className="btn-primary mt-3 w-full justify-center text-xs"
+              className="btn-primary mt-3 flex w-full items-center justify-center gap-2 text-sm px-6 py-3"
             >
-              Open live lottery screen
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Open Live Lottery Screen
             </Link>
             <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
               Includes pause / resume controls and ensures no repetition or
