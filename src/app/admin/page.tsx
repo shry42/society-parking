@@ -35,11 +35,13 @@ export default function AdminLandingPage() {
               dashboard you can lock applications, set fixed slots and run the
               live draw.
             </p>
-            <div className="mt-4 flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-300">
-              Go to login
-              <svg className="h-4 w-4 transition group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+            <div className="mt-4">
+              <div className="btn-primary inline-flex items-center gap-2">
+                Go to login
+                <svg className="h-4 w-4 transition group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </div>
           </div>
         </Link>
