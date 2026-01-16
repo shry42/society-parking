@@ -347,8 +347,8 @@ export default function AdminLotteryPage() {
       </section>
 
       {isFullscreen && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
-          <div className="flex gap-2 rounded-full bg-slate-900/90 p-2 shadow-lg dark:bg-slate-100/90">
+        <div className="fixed right-4 top-1/2 z-50 -translate-y-1/2">
+          <div className="flex flex-col gap-2 rounded-full bg-slate-900/90 p-2 shadow-lg dark:bg-slate-100/90">
             {status === "not-started" && (
               <button
                 type="button"
