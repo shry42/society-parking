@@ -1,124 +1,217 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type DrawStatus = "not-started" | "running" | "paused" | "completed";
 
 type DrawItem = {
   id: string;
   flatNumber: string;
-  isFixed?: boolean;
   displayName: string;
+  // how many slots this flat would like (1 or 2)
+  slotsWanted?: number;
+  // how many slots were actually granted in the draw
+  slotsGranted?: number;
   result?: "ALLOTTED" | "NOT_ALLOTTED";
+  // For 2 slots this will be a joined string e.g. "P-001, P-002"
   slotNumber?: string;
 };
 
-const demoFlats: DrawItem[] = [
-  {
-    id: "1",
-    flatNumber: "A-302",
-    isFixed: true,
-    displayName: "Shah Family",
-    result: "ALLOTTED",
-    slotNumber: "F-01"
-  },
-  {
-    id: "2",
-    flatNumber: "B-204",
-    displayName: "Patel Family"
-  },
-  {
-    id: "3",
-    flatNumber: "C-501",
-    displayName: "Mehta Family"
-  },
-  {
-    id: "4",
-    flatNumber: "A-105",
-    displayName: "Kumar Family"
-  },
-  {
-    id: "5",
-    flatNumber: "D-307",
-    displayName: "Singh Family"
-  },
-  {
-    id: "6",
-    flatNumber: "B-412",
-    displayName: "Gupta Family"
-  },
-  {
-    id: "7",
-    flatNumber: "E-208",
-    displayName: "Sharma Family"
-  },
-  {
-    id: "8",
-    flatNumber: "C-603",
-    displayName: "Joshi Family"
-  },
-  {
-    id: "9",
-    flatNumber: "A-401",
-    displayName: "Desai Family"
-  },
-  {
-    id: "10",
-    flatNumber: "F-205",
-    displayName: "Reddy Family"
-  }
+// Full list of physical parking slots as per Excel:
+// G-1 to G-26 (26), UB-1 to UB-56 (59), LB-1 to LB-60 (50), T-1 to T-70 (70) => 205
+const BASE_SLOTS: string[] = [
+  ...Array.from({ length: 26 }, (_, i) => `G-${i + 1}`),
+  ...Array.from({ length: 59 }, (_, i) => `UB-${i + 1}`),
+  ...Array.from({ length: 50 }, (_, i) => `LB-${i + 1}`),
+  ...Array.from({ length: 70 }, (_, i) => `T-${i + 1}`)
 ];
+
+const TOTAL_SLOTS = BASE_SLOTS.length;
+
+function parseSlotLabel(label: string): { prefix: string; num: number } | null {
+  const m = /^([A-Z]+)-(\d+)$/.exec(label.trim());
+  if (!m) return null;
+  return { prefix: m[1]!, num: Number(m[2]) };
+}
+
+// Build all consecutive pairs (G-1,G-2), (UB-1,UB-2), ... so 2-slot owners always get sequential slots.
+function buildAllPairs(): [string, string][] {
+  const byPrefix: Record<string, string[]> = {};
+  for (const s of BASE_SLOTS) {
+    const p = parseSlotLabel(s);
+    if (!p) continue;
+    if (!byPrefix[p.prefix]) byPrefix[p.prefix] = [];
+    byPrefix[p.prefix].push(s);
+  }
+  const pairs: [string, string][] = [];
+  for (const arr of Object.values(byPrefix)) {
+    arr.sort((a, b) => parseSlotLabel(a)!.num - parseSlotLabel(b)!.num);
+    for (let i = 0; i + 1 < arr.length; i += 2) {
+      pairs.push([arr[i]!, arr[i + 1]!]);
+    }
+  }
+  return pairs;
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+// Build pair pool (for 2-slot flats) and single pool (for 1-slot flats). 2-slot owners always get consecutive slots.
+function buildAssignmentPools(count2Slot: number): { pairPool: [string, string][]; singlePool: string[] } {
+  const allPairs = buildAllPairs();
+  const shuffledPairs = shuffleArray(allPairs);
+  const pairPool = shuffledPairs.slice(0, count2Slot);
+  const usedSlots = new Set(pairPool.flat());
+  const singlePool = shuffleArray(BASE_SLOTS.filter((s) => !usedSlots.has(s)));
+  return { pairPool, singlePool };
+}
 
 export default function AdminLotteryPage() {
   const [status, setStatus] = useState<DrawStatus>("not-started");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [history, setHistory] = useState<DrawItem[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [items, setItems] = useState<DrawItem[]>([]);
+  const [pairPool, setPairPool] = useState<[string, string][]>([]);
+  const [singlePool, setSinglePool] = useState<string[]>([]);
+  const [nextPairIndex, setNextPairIndex] = useState(0);
+  const [nextSingleIndex, setNextSingleIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resultsSaved, setResultsSaved] = useState(false);
+  const [resultsLocked, setResultsLocked] = useState(false);
 
-  const items = useMemo(() => demoFlats, []);
+  // Load flats from parking_master
+  useEffect(() => {
+    if (!db) {
+      setError("Firebase is not configured.");
+      setLoading(false);
+      return;
+    }
+    // First check if results already exist; if yes, lock the draw.
+    getDocs(collection(db, "parking_results"))
+      .then((snap) => {
+        if (!snap.empty) {
+          setResultsLocked(true);
+        }
+      })
+      .catch(() => {
+        // ignore errors here; we can still try to run the lottery
+      });
+
+    getDocs(collection(db, "parking_master"))
+      .then((snap) => {
+        const docs = snap.docs.map((d, idx) => {
+          const data = d.data() as Record<string, unknown>;
+          const flatNumber = (data.flatNo ?? `#${idx + 1}`).toString().trim();
+          const displayName = (data.flatOwnersNameSoleFirstName ?? "Unknown").toString().trim();
+          const rowIndex = Number(data._rowIndex ?? 0);
+
+          // Handle case where some owners have 2 parking slots (purchased)
+          // In Firestore this comes from Excel headers:
+          // - "Parking Slot/s"  -> field `parkingSlotS`  (1 or 2 per flat)
+          // - "Parking Slots"   -> field `parkingSlots` (summary, usually 1)
+          const rawSlots = Number(
+            (data.parkingSlotS as unknown) ??
+              (data.parkingSlots as unknown) ??
+              1
+          );
+          const slotsWanted = Number.isFinite(rawSlots) && rawSlots > 0 ? rawSlots : 1;
+
+          return {
+            id: d.id,
+            flatNumber,
+            displayName,
+            slotsWanted,
+            rowIndex
+          };
+        });
+
+        // Sort strictly in ascending order of _rowIndex (same as Excel preview).
+        docs.sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+
+        const drawItems = docs.map(({ rowIndex, ...rest }) => rest as DrawItem);
+        setItems(drawItems);
+        const count2Slot = drawItems.filter((d) => (d.slotsWanted ?? 1) >= 2).length;
+        const { pairPool: pairs, singlePool: singles } = buildAssignmentPools(count2Slot);
+        setPairPool(pairs);
+        setSinglePool(singles);
+      })
+      .catch((err: unknown) => {
+        const msg = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Failed to load data.";
+        setError(msg);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (status !== "running") return;
+    if (!items.length) return;
     if (currentIndex >= items.length) {
       setStatus("completed");
       return;
     }
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const current = items[currentIndex];
-      const isFixed = current.isFixed;
-      const allottedCount = history.filter((h) => h.result === "ALLOTTED").length;
-      const remainingSlots = 205 - allottedCount;
-      let result: DrawItem;
-
-      if (isFixed && current.slotNumber) {
-        // Fixed slot - use the pre-assigned slot
-        result = { ...current, result: "ALLOTTED", slotNumber: current.slotNumber };
-      } else if (remainingSlots > 0) {
-        // Random allocation for normal flats (70% chance for demo)
-        const willAllot = Math.random() > 0.3;
-        if (willAllot) {
-          const nextSlotNumber = allottedCount + 1;
-          result = {
-            ...current,
-            result: "ALLOTTED",
-            slotNumber: `P-${String(nextSlotNumber).padStart(3, "0")}`
-          };
-        } else {
-          result = { ...current, result: "NOT_ALLOTTED" };
-        }
+      const slotsWanted = current.slotsWanted ?? 1;
+      let labels: string[];
+      if (slotsWanted >= 2 && nextPairIndex < pairPool.length) {
+        labels = pairPool[nextPairIndex]!;
+        setNextPairIndex((prev) => prev + 1);
+      } else if (nextSingleIndex < singlePool.length) {
+        labels = [singlePool[nextSingleIndex]!];
+        setNextSingleIndex((prev) => prev + 1);
       } else {
-        // No slots remaining
-        result = { ...current, result: "NOT_ALLOTTED" };
+        labels = [];
       }
+      const result: DrawItem = {
+        ...current,
+        result: "ALLOTTED",
+        slotsGranted: labels.length,
+        slotNumber: labels.join(", ")
+      };
 
       setHistory((prev) => [...prev, result]);
+
+      // If this was the last flat, persist full results and lock.
+      if (currentIndex + 1 === items.length && !resultsSaved && db) {
+        try {
+          const allResults = [...history, result];
+          const batch = writeBatch(db);
+          const colRef = collection(db, "parking_results");
+          allResults.forEach((r) => {
+            const ref = doc(colRef, r.id);
+            batch.set(ref, {
+              flatNo: r.flatNumber,
+              ownerName: r.displayName,
+              slotsWanted: r.slotsWanted ?? 1,
+              slotsGranted: r.slotsGranted ?? (r.slotNumber ? String(r.slotNumber).split(",").length : 0),
+              slotNumbers: r.slotNumber ?? "",
+              createdAt: new Date().toISOString(),
+            });
+          });
+          await batch.commit();
+          setResultsSaved(true);
+        } catch (e) {
+          console.error("Failed to save lottery results:", e);
+        }
+      }
+
       setCurrentIndex((prev) => prev + 1);
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [status, currentIndex, items, history]);
+  }, [status, currentIndex, items, nextPairIndex, nextSingleIndex, pairPool, singlePool, history, resultsSaved]);
 
   const current = history[history.length - 1];
 
@@ -164,10 +257,22 @@ export default function AdminLotteryPage() {
             </button>
           )}
           <p className="badge mb-4 text-sm font-semibold uppercase tracking-[0.26em] text-primary-600 dark:text-primary-200 sm:text-base lg:text-lg">
-            Society Parking Lottery
+            Society Parking Lottery {resultsLocked ? "(Results Locked)" : ""}
           </p>
 
-          {current ? (
+          {status === "completed" ? (
+            <>
+              <p className="text-lg font-medium text-slate-600 dark:text-slate-300 sm:text-xl lg:text-2xl xl:text-3xl">
+                Lottery completed
+              </p>
+              <p className="mt-4 text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-5xl lg:text-6xl xl:text-7xl">
+                All results have been saved
+              </p>
+              <p className="mt-6 max-w-md text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+                You can download the results from the admin dashboard.
+              </p>
+            </>
+          ) : current ? (
             <>
               <p className="text-lg font-medium text-slate-600 dark:text-slate-300 sm:text-xl lg:text-2xl xl:text-3xl">
                 Flat appearing in draw
@@ -183,25 +288,19 @@ export default function AdminLotteryPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 sm:text-base lg:text-lg xl:text-xl">
                   Result
                 </p>
-                {current.result === "ALLOTTED" ? (
-                  <>
-                    <p className="rounded-full bg-emerald-500/10 px-8 py-4 text-base font-semibold uppercase tracking-[0.24em] text-emerald-600 ring-4 ring-emerald-500/60 dark:text-emerald-300 sm:px-10 sm:py-5 sm:text-lg lg:px-12 lg:py-6 lg:text-xl xl:px-16 xl:py-8 xl:text-2xl">
-                      Parking Allotted
-                    </p>
-                    {current.slotNumber && (
-                      <p className="text-lg text-emerald-700 dark:text-emerald-200 sm:text-xl lg:text-2xl xl:text-3xl">
-                        Slot number:{" "}
-                        <span className="font-bold text-2xl sm:text-3xl lg:text-4xl xl:text-5xl">
-                          {current.slotNumber}
-                        </span>
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="rounded-full bg-rose-500/10 px-8 py-4 text-base font-semibold uppercase tracking-[0.24em] text-rose-600 ring-4 ring-rose-500/60 dark:text-rose-200 sm:px-10 sm:py-5 sm:text-lg lg:px-12 lg:py-6 lg:text-xl xl:px-16 xl:py-8 xl:text-2xl">
-                    Not Allotted
+                <>
+                  <p className="rounded-full bg-emerald-500/10 px-8 py-4 text-base font-semibold uppercase tracking-[0.24em] text-emerald-600 ring-4 ring-emerald-500/60 dark:text-emerald-300 sm:px-10 sm:py-5 sm:text-lg lg:px-12 lg:py-6 lg:text-xl xl:px-16 xl:py-8 xl:text-2xl">
+                    Parking Allotted
                   </p>
-                )}
+                  {current.slotNumber && (
+                    <p className="text-lg text-emerald-700 dark:text-emerald-200 sm:text-xl lg:text-2xl xl:text-3xl">
+                      Slot number:{" "}
+                      <span className="font-bold text-2xl sm:text-3xl lg:text-4xl xl:text-5xl">
+                        {current.slotNumber}
+                      </span>
+                    </p>
+                  )}
+                </>
               </div>
             </>
           ) : (
@@ -211,7 +310,7 @@ export default function AdminLotteryPage() {
               </p>
               <p className="mt-4 text-base text-slate-500 dark:text-slate-400 sm:text-lg lg:text-xl">
                 When you start, the system will automatically cycle through all
-                flats exactly once in random order.
+                flats exactly once and allot shuffled parking slots.
               </p>
             </>
           )}
@@ -236,11 +335,10 @@ export default function AdminLotteryPage() {
                 </button>
               </div>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                In the real system, once you start and complete the lottery, it
-                cannot be run again.
+                Once results are saved, the lottery is locked and cannot be run again.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
-              {status === "not-started" && (
+              {status === "not-started" && !resultsLocked && (
                 <button
                   type="button"
                   className="btn-primary flex items-center gap-2 text-sm px-6 py-3"
@@ -280,7 +378,7 @@ export default function AdminLotteryPage() {
               )}
               {status === "completed" && (
                 <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-500/50 dark:text-emerald-300">
-                  Demo draw completed
+                  Draw completed
                 </span>
               )}
             </div>
@@ -293,7 +391,7 @@ export default function AdminLotteryPage() {
 
           <div className="card p-3 sm:p-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              Recent flats (Demo)
+              Recent flats
             </h2>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
               A compact history of the flats that have already appeared.
@@ -321,16 +419,8 @@ export default function AdminLotteryPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p
-                        className={`text-[11px] font-semibold ${
-                          item.result === "ALLOTTED"
-                            ? "text-emerald-600 dark:text-emerald-300"
-                            : "text-rose-600 dark:text-rose-300"
-                        }`}
-                      >
-                        {item.result === "ALLOTTED"
-                          ? "Allotted"
-                          : "Not allotted"}
+                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">
+                        Allotted
                       </p>
                       {item.slotNumber && (
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">

@@ -1,58 +1,52 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type Application = {
   id: string;
   flatNumber: string;
   tenantName: string;
-  vehicleNumber: string;
-  hasFixedSlot?: boolean;
-  fixedSlotNumber?: string;
 };
 
-const mockApplications: Application[] = [
-  {
-    id: "1",
-    flatNumber: "A-101",
-    tenantName: "Kumar Family",
-    vehicleNumber: "MH12AB1234"
-  },
-  {
-    id: "2",
-    flatNumber: "A-302",
-    tenantName: "Shah Family",
-    vehicleNumber: "MH12XY9876",
-    hasFixedSlot: true,
-    fixedSlotNumber: "F-01"
-  },
-  {
-    id: "3",
-    flatNumber: "B-204",
-    tenantName: "Patel Family",
-    vehicleNumber: "MH14CD4567"
+type ResultRow = {
+  flatNo: string;
+  ownerName: string;
+  slotsGranted: number;
+  slotNumbers: string;
+};
+
+async function downloadResultsCsv() {
+  if (!db) return;
+
+  const snap = await getDocs(collection(db, "parking_results"));
+  const rows: ResultRow[] = snap.docs.map((d) => {
+    const data = d.data() as any;
+    return {
+      flatNo: String(data.flatNo ?? ""),
+      ownerName: String(data.ownerName ?? ""),
+      slotsGranted: Number(data.slotsGranted ?? 0),
+      slotNumbers: String(data.slotNumbers ?? "")
+    };
+  });
+
+  if (!rows.length) {
+    alert("No lottery results saved yet.");
+    return;
   }
-];
 
-function downloadCsv(applications: Application[]) {
-  const header = [
-    "Flat Number",
-    "Tenant Name",
-    "Vehicle Number",
-    "Has Fixed Slot",
-    "Fixed Slot Number"
-  ];
+  const header = ["Flat Number", "Owner Name", "Slots Allotted", "Parking Slots"];
 
-  const rows = applications.map((a) => [
-    a.flatNumber,
-    a.tenantName,
-    a.vehicleNumber,
-    a.hasFixedSlot ? "YES" : "NO",
-    a.fixedSlotNumber ?? ""
+  const csvRows = rows.map((r) => [
+    r.flatNo,
+    r.ownerName,
+    String(r.slotsGranted),
+    r.slotNumbers
   ]);
 
-  const csv = [header, ...rows]
+  const csv = [header, ...csvRows]
     .map((row) =>
       row
         .map((cell) => {
@@ -76,14 +70,33 @@ function downloadCsv(applications: Application[]) {
 
 export default function AdminDashboardPage() {
   const [locked, setLocked] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+
+  useEffect(() => {
+    if (!db) return;
+    getDocs(collection(db, "parking_master"))
+      .then((snap) => {
+        const rows: Application[] = snap.docs.map((d, idx) => {
+          const data = d.data() as any;
+          const flatNumber = String(data.flatNo ?? `#${idx + 1}`).trim();
+          const tenantName = String(data.flatOwnersNameSoleFirstName ?? "Unknown").trim();
+          const rowIndex = Number(data._rowIndex ?? 0);
+          return { id: d.id, flatNumber, tenantName, rowIndex } as any;
+        });
+        rows.sort((a: any, b: any) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+        setApplications(rows.map(({ rowIndex, ...rest }: any) => rest as Application));
+      })
+      .catch((err) => {
+        console.error("Failed to load applications:", err);
+      });
+  }, []);
 
   const stats = useMemo(
     () => ({
-      totalApplications: mockApplications.length,
-      fixedSlotsUsed: mockApplications.filter((a) => a.hasFixedSlot).length,
+      totalApplications: applications.length,
       totalSlots: 205
     }),
-    []
+    [applications.length]
   );
 
   return (
@@ -101,13 +114,12 @@ export default function AdminDashboardPage() {
             Admin Dashboard
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Review applications, configure fixed parking, and control the live
-            lottery draw.
+            Review applications and control the live lottery draw.
           </p>
         </div>
       </div>
 
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
         <div className="card p-3 sm:p-4">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Total applications
@@ -116,7 +128,7 @@ export default function AdminDashboardPage() {
             {stats.totalApplications}
           </p>
           <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            Approx. 350 tenants expected overall.
+            199 members (6 have 2 parking slots).
           </p>
         </div>
 
@@ -128,21 +140,7 @@ export default function AdminDashboardPage() {
             {stats.totalSlots}
           </p>
           <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            Once all 205 are allotted, remaining flats will show &quot;Not
-            Allotted&quot;.
-          </p>
-        </div>
-
-        <div className="card p-3 sm:p-4">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Fixed parking
-          </p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
-            {stats.fixedSlotsUsed} / 10
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            Pre-assigned slots decided by the society but shown like normal
-            lottery results.
+            Total of 205 parking slots available for the society.
           </p>
         </div>
       </section>
@@ -151,13 +149,15 @@ export default function AdminDashboardPage() {
         <div className="card p-3 sm:p-4">
           <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              Applications (sample data)
+              Society members
             </h2>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
-                onClick={() => downloadCsv(mockApplications)}
+                onClick={() => {
+                  void downloadResultsCsv();
+                }}
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -173,37 +173,25 @@ export default function AdminDashboardPage() {
             <table className="min-w-full text-left text-xs text-slate-600 dark:text-slate-300">
               <thead className="bg-slate-100 text-[11px] uppercase tracking-wide text-slate-500 dark:bg-slate-900/80 dark:text-slate-400">
                 <tr>
+                  <th className="px-2 py-2 sm:px-3 sm:py-2.5">Sr No</th>
                   <th className="px-2 py-2 sm:px-3 sm:py-2.5">Flat</th>
                   <th className="px-2 py-2 sm:px-3 sm:py-2.5">Tenant</th>
-                  <th className="px-2 py-2 sm:px-3 sm:py-2.5">Vehicle</th>
-                  <th className="px-2 py-2 text-right sm:px-3 sm:py-2.5">Fixed slot</th>
                 </tr>
               </thead>
               <tbody>
-                {mockApplications.map((app) => (
+                {applications.map((app, index) => (
                   <tr
                     key={app.id}
                     className="border-t border-slate-200 hover:bg-slate-100 dark:border-slate-800/80 dark:hover:bg-slate-900/60"
                   >
+                    <td className="px-2 py-2 text-slate-600 dark:text-slate-300 sm:px-3 sm:py-2.5">
+                      {index + 1}
+                    </td>
                     <td className="px-2 py-2 font-medium text-slate-900 dark:text-slate-100 sm:px-3 sm:py-2.5">
                       {app.flatNumber}
                     </td>
                     <td className="px-2 py-2 text-slate-700 dark:text-slate-300 sm:px-3 sm:py-2.5">
                       {app.tenantName}
-                    </td>
-                    <td className="px-2 py-2 text-slate-600 dark:text-slate-300 sm:px-3 sm:py-2.5">
-                      {app.vehicleNumber}
-                    </td>
-                    <td className="px-2 py-2 text-right sm:px-3 sm:py-2.5">
-                      {app.hasFixedSlot ? (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-500/40 dark:text-emerald-300">
-                          {app.fixedSlotNumber}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Normal lottery
-                        </span>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -211,8 +199,7 @@ export default function AdminDashboardPage() {
             </table>
           </div>
           <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-            In production this table will show live data from the tenant
-            application system and enforce no duplicate flats or vehicles.
+            Showing real member data. Vehicle numbers are not displayed.
           </p>
         </div>
 
@@ -234,7 +221,7 @@ export default function AdminDashboardPage() {
               }`}
               onClick={() => setLocked((prev) => !prev)}
             >
-              {locked ? "Unlock applications (demo only)" : "Lock applications"}
+              {locked ? "Unlock applications" : "Lock applications"}
             </button>
             <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
               In the real system, locking is irreversible once the lottery

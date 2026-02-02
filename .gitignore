@@ -27,6 +27,11 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# Firebase service account key (never commit)
+**/serviceAccountKey.json
+**/society-parking-serviceAccountKey.json
+**/*-serviceAccountKey.json
+
 # vercel
 .vercel
 

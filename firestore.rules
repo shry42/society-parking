@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read of admincred so login can validate (no service account needed).
+    match /admincred/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -9,8 +9,8 @@ export default function AdminLandingPage() {
             Society / Admin Portal
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Restricted area for office staff to manage applications, configure
-            fixed parking, and run the one-time live lottery.
+            Restricted area for office staff to manage applications and run the
+            one-time live lottery.
           </p>
         </div>
       </div>
@@ -32,8 +32,7 @@ export default function AdminLandingPage() {
             </h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               Secure login for authorized committee / office members. From the
-              dashboard you can lock applications, set fixed slots and run the
-              live draw.
+              dashboard you can lock applications and run the live draw.
             </p>
             <div className="mt-4">
               <div className="btn-primary inline-flex items-center gap-2">
@@ -52,10 +51,6 @@ export default function AdminLandingPage() {
           </h3>
           <ul className="mt-1 list-inside list-disc space-y-1">
             <li>View and validate all tenant applications.</li>
-            <li>
-              Pre-assign up to 10 fixed parking slots for special flats decided
-              by the society.
-            </li>
             <li>
               Lock applications before starting the lottery to prevent changes.
             </li>

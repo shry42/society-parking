@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { collection, addDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type FormState = {
   flatNumber: string;
   tenantName: string;
   vehicleNumber: string;
 };
+
+const APPLICATIONS_COLLECTION = "applications";
 
 export default function TenantApplyPage() {
   const [form, setForm] = useState<FormState>({
@@ -17,6 +21,7 @@ export default function TenantApplyPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -25,14 +30,44 @@ export default function TenantApplyPage() {
     setForm((prev) => ({ ...prev, [name]: value.toUpperCase() }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder: will be replaced with Firebase write + duplicate check
+    setSubmitError(null);
     setSubmitting(true);
-    setTimeout(() => {
+    const flat = form.flatNumber.trim().toUpperCase();
+    const vehicle = form.vehicleNumber.trim().toUpperCase();
+    try {
+      if (db) {
+        const applicationsRef = collection(db, APPLICATIONS_COLLECTION);
+        const byFlat = query(applicationsRef, where("flatNumber", "==", flat));
+        const byVehicle = query(applicationsRef, where("vehicleNumber", "==", vehicle));
+        const [flatSnap, vehicleSnap] = await Promise.all([getDocs(byFlat), getDocs(byVehicle)]);
+        if (!flatSnap.empty) {
+          setSubmitError("This flat has already submitted an application.");
+          setSubmitting(false);
+          return;
+        }
+        if (!vehicleSnap.empty) {
+          setSubmitError("This vehicle number is already registered.");
+          setSubmitting(false);
+          return;
+        }
+        await addDoc(applicationsRef, {
+          flatNumber: flat,
+          tenantName: form.tenantName.trim(),
+          vehicleNumber: vehicle,
+          createdAt: serverTimestamp(),
+        });
+        setSubmitted(true);
+      } else {
+        setSubmitError("Firebase is not configured. Add your config to .env.local (see .env.local.example).");
+      }
+    } catch (err: unknown) {
+      const message = err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Submission failed.";
+      setSubmitError(message);
+    } finally {
       setSubmitting(false);
-      setSubmitted(true);
-    }, 900);
+    }
   };
 
   return (
@@ -141,6 +176,12 @@ export default function TenantApplyPage() {
           </p>
         </div>
 
+        {submitError && (
+          <div className="rounded-lg border-2 border-rose-500/50 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-900/20">
+            <p className="text-sm text-rose-800 dark:text-rose-200">{submitError}</p>
+          </div>
+        )}
+
         <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20">
           <div className="flex gap-3">
             <svg className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,11 +227,9 @@ export default function TenantApplyPage() {
 
       {submitted && (
         <div className="card border-emerald-500/30 bg-emerald-50 p-4 text-xs text-emerald-800 dark:bg-emerald-900/10 dark:text-emerald-100">
-          <p className="font-semibold">Application received (demo state).</p>
+          <p className="font-semibold">Application received.</p>
           <p className="mt-1 text-emerald-700 dark:text-emerald-200">
-            In the final system this form will save your entry to the society
-            parking lottery database, ensuring no duplicate flat or vehicle
-            numbers.
+            Your entry has been saved to the society parking lottery (Firebase). No duplicate flat or vehicle numbers are allowed.
           </p>
         </div>
       )}

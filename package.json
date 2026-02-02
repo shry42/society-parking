@@ -6,24 +6,32 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "upload-excel": "node scripts/upload-excel-to-firebase.mjs",
+    "upload-excel:dry": "DRY_RUN=1 node scripts/upload-excel-to-firebase.mjs",
+    "remove-col-columns": "node scripts/remove-col-columns.mjs",
+    "create-admincred": "node scripts/create-admincred.mjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "firebase": "^12.8.0",
+    "firebase-admin": "^13.6.0",
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "autoprefixer": "^10.4.0",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.2.5",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.0.0",
-    "eslint": "^8.56.0",
-    "eslint-config-next": "14.2.5"
+    "typescript": "^5.0.0"
   }
 }
-
-

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type ResultState =
   | { status: "idle" }
@@ -13,32 +15,40 @@ type ResultState =
     }
   | { status: "not-found" };
 
+const RESULTS_COLLECTION = "results";
+
 export default function TenantResultPage() {
   const [flatNumber, setFlatNumber] = useState("");
   const [state, setState] = useState<ResultState>({ status: "idle" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder: will later query Firebase for this flat's final result
+    const trimmed = flatNumber.trim().toUpperCase();
+    if (!trimmed) {
+      setState({ status: "not-found" });
+      return;
+    }
     setState({ status: "searching" });
-    setTimeout(() => {
-      // demo only: fake outcome based on last character
-      const trimmed = flatNumber.trim().toUpperCase();
-      if (!trimmed) {
-        setState({ status: "not-found" });
-        return;
+    try {
+      if (db) {
+        const resultsRef = collection(db, RESULTS_COLLECTION);
+        const q = query(resultsRef, where("flatNumber", "==", trimmed));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const doc = snap.docs[0];
+          const data = doc.data();
+          setState({
+            status: "found",
+            allotted: Boolean(data.allotted),
+            slotNumber: data.slotNumber ?? undefined,
+          });
+          return;
+        }
       }
-      const lastChar = trimmed.at(-1);
-      if (lastChar && /\d/.test(lastChar) && Number(lastChar) % 2 === 0) {
-        setState({
-          status: "found",
-          allotted: true,
-          slotNumber: `P-${lastChar}1`
-        });
-      } else {
-        setState({ status: "found", allotted: false });
-      }
-    }, 800);
+      setState({ status: "not-found" });
+    } catch {
+      setState({ status: "not-found" });
+    }
   };
 
   return (

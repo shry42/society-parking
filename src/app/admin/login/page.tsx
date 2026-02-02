@@ -11,19 +11,33 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!email || !password) {
+      setError("Please enter admin email and password.");
+      return;
+    }
     setLoading(true);
-    // Placeholder: will be replaced with Firebase Auth / custom admin auth
-    setTimeout(() => {
-      setLoading(false);
-      if (!email || !password) {
-        setError("Please enter admin email and password.");
+    try {
+      const res = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Invalid email or password.");
         return;
       }
       router.push("/admin/dashboard");
-    }, 800);
+      router.refresh();
+    } catch {
+      setError("Login failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,7 +75,7 @@ export default function AdminLoginPage() {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="office@society.org"
+            placeholder="admin@society.com"
             className="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-base text-slate-900 outline-none ring-primary-500/40 transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -124,8 +138,7 @@ export default function AdminLoginPage() {
         </button>
 
         <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-          In the final version, this login will be backed by Firebase or a
-          secure admin authentication mechanism.
+          Credentials are verified against the admincred collection in Firestore.
         </p>
       </form>
     </div>

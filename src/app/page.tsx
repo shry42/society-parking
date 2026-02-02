@@ -13,9 +13,9 @@ export default function HomePage() {
             Parking Lottery Portal for Your Housing Society
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
-            Tenants apply once. Society runs a single, live lottery event that
-            fairly distributes limited car parking slots. Results are locked
-            forever after the draw – no edits, no confusion.
+            Society maintains the member list and runs a single, live lottery
+            that allocates 205 parking slots. Results are locked forever after
+            the draw – no edits, no confusion.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:gap-4">
             <Link href="/tenant" className="group btn-primary flex items-center justify-center gap-2 w-full sm:w-auto text-base px-6 py-3">
@@ -37,21 +37,13 @@ export default function HomePage() {
               </svg>
             </Link>
           </div>
-          <div className="mt-4 grid gap-3 text-xs sm:mt-6 sm:grid-cols-3">
+          <div className="mt-4 grid gap-3 text-xs sm:mt-6 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800/80 dark:bg-slate-900/60">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Fair allocation
               </p>
               <p className="mt-1 text-sm text-slate-700 dark:text-slate-100">
-                Every valid tenant application enters the same lottery pool.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800/80 dark:bg-slate-900/60">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Fixed slots handled
-              </p>
-              <p className="mt-1 text-sm text-slate-700 dark:text-slate-100">
-                Pre-assigned slots for special flats, shown like normal results.
+                All society members are in the lottery; slots are allocated fairly.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800/80 dark:bg-slate-900/60">
@@ -73,22 +65,16 @@ export default function HomePage() {
           </h2>
           <ol className="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300">
             <li>
-              <span className="font-semibold text-primary-600 dark:text-primary-200">1.</span> Each
-              tenant applies once with flat, name and vehicle number. No
-              duplicates allowed.
+              <span className="font-semibold text-primary-600 dark:text-primary-200">1.</span> Admin
+              reviews the member list and locks before running the lottery.
             </li>
             <li>
-              <span className="font-semibold text-primary-600 dark:text-primary-200">2.</span> Admin
-              reviews entries, configures up to 10 fixed slots, and locks
-              applications.
-            </li>
-            <li>
-              <span className="font-semibold text-primary-600 dark:text-primary-200">3.</span> During
+              <span className="font-semibold text-primary-600 dark:text-primary-200">2.</span> During
               the live event, flats appear one-by-one on screen with animated
               lottery-style results.
             </li>
             <li>
-              <span className="font-semibold text-primary-600 dark:text-primary-200">4.</span> Once
+              <span className="font-semibold text-primary-600 dark:text-primary-200">3.</span> Once
               completed, results are frozen. Tenants can later check their
               status online.
             </li>
@@ -100,10 +86,9 @@ export default function HomePage() {
             System highlights
           </h3>
           <ul className="list-inside list-disc space-y-1">
-            <li>205 total parking slots, ~350 applicants supported.</li>
+            <li>199 members with 1 parking slot, 6 members with 2 slots; 205 slots in total.</li>
             <li>
-              Admin-only dashboard for applications, fixed parking, and the live
-              draw.
+              Admin-only dashboard for applications and the live draw.
             </li>
             <li>
               Pause/resume controls for the draw – no skipping or repeating
