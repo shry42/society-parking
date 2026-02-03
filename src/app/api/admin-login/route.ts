@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const email = typeof body.email === "string" ? body.email.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const password = typeof body.password === "string" ? body.password.trim() : "";
 
     if (!email || !password) {
       return NextResponse.json(

@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
         credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
@@ -136,10 +136,6 @@ export default function AdminLoginPage() {
             </>
           )}
         </button>
-
-        <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-          Credentials are verified against the admincred collection in Firestore.
-        </p>
       </form>
     </div>
   );
